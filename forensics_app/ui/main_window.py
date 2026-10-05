@@ -12,7 +12,8 @@ from forensics_app.core import ImageDocument
 from forensics_app.tools.base import ForensicsTool
 from forensics_app.tools.registry import ToolRegistry
 from .image_view import ImageView
-
+import numpy as np
+from PIL import Image
 
 OPEN_TYPES = [
     ("Image files", "*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp"),
@@ -81,20 +82,59 @@ class MainWindow:
         self.redo_button.pack(side="left", padx=(6, 0))
         ttk.Button(toolbar, text="Reset", command=self.reset).pack(side="left", padx=(6, 0))
 
-        body = ttk.Panedwindow(container, orient="horizontal")
-        body.pack(fill="both", expand=True)
+        self.body = ttk.Panedwindow(container, orient="horizontal")
+        self.body.pack(fill="both", expand=True)
 
-        sidebar = ttk.Frame(body, style="Sidebar.TFrame", padding=12, width=235)
-        sidebar.pack_propagate(False)
-        body.add(sidebar, weight=0)
-        ttk.Label(sidebar, text="Forensics tools", style="Title.TLabel", background="#eef1f5").pack(
-            anchor="w", pady=(0, 12)
+        sidebar_container = ttk.Frame(self.body, style="Sidebar.TFrame", width=255)
+        sidebar_container.pack_propagate(False)
+        self.body.add(sidebar_container, weight=0)
+
+        title_frame = ttk.Frame(sidebar_container, style="Sidebar.TFrame", padding=(12, 10, 12, 4))
+        title_frame.pack(fill="x")
+        ttk.Label(title_frame, text="Forensics tools", style="Title.TLabel", background="#eef1f5").pack(anchor="w")
+
+        sidebar_canvas = tk.Canvas(
+            sidebar_container,
+            background="#eef1f5",
+            borderwidth=0,
+            highlightthickness=0,
         )
+        scrollbar = ttk.Scrollbar(sidebar_container, orient="vertical", command=sidebar_canvas.yview)
+        sidebar_content = ttk.Frame(sidebar_canvas, style="Sidebar.TFrame", padding=(12, 2, 8, 12))
+
+        canvas_window = sidebar_canvas.create_window((0, 0), window=sidebar_content, anchor="nw")
+
+        def _on_content_configure(_event: tk.Event) -> None:
+            sidebar_canvas.configure(scrollregion=sidebar_canvas.bbox("all"))
+
+        def _on_canvas_configure(event: tk.Event) -> None:
+            sidebar_canvas.itemconfig(canvas_window, width=event.width)
+
+        sidebar_content.bind("<Configure>", _on_content_configure)
+        sidebar_canvas.bind("<Configure>", _on_canvas_configure)
+        sidebar_canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Mousewheel scrolling when hovering over sidebar
+        def _bind_mousewheel(event: tk.Event) -> None:
+            sidebar_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _unbind_mousewheel(event: tk.Event) -> None:
+            sidebar_canvas.unbind_all("<MouseWheel>")
+
+        def _on_mousewheel(event: tk.Event) -> None:
+            sidebar_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        sidebar_container.bind("<Enter>", _bind_mousewheel)
+        sidebar_container.bind("<Leave>", _unbind_mousewheel)
+
+        scrollbar.pack(side="right", fill="y")
+        sidebar_canvas.pack(side="left", fill="both", expand=True)
+
         for category, tools in self.registry.categories():
-            ttk.Label(sidebar, text=category, style="Category.TLabel").pack(anchor="w", pady=(9, 4))
+            ttk.Label(sidebar_content, text=category, style="Category.TLabel").pack(anchor="w", pady=(8, 3))
             for tool in tools:
                 button = ttk.Button(
-                    sidebar,
+                    sidebar_content,
                     text=tool.title,
                     style="Tool.TButton",
                     command=lambda selected=tool: self.run_tool(selected),
@@ -103,12 +143,42 @@ class MainWindow:
                 button.bind("<Enter>", lambda _event, selected=tool: self.status.set(selected.description))
                 button.bind("<Leave>", lambda _event: self.status.set("Ready."))
 
-        self.image_view = ImageView(body)
-        body.add(self.image_view, weight=1)
+        self.image_view = ImageView(self.body)
+        self.body.add(self.image_view, weight=3)
 
-        inspector = ttk.Frame(body, padding=12, width=250)
+        # Graph / Plot Side Panel (shown on demand when a graph/histogram is generated)
+        self.graph_panel = ttk.Frame(self.body, padding=8, width=390)
+        self.graph_panel.pack_propagate(False)
+
+        graph_header = ttk.Frame(self.graph_panel)
+        graph_header.pack(fill="x", pady=(0, 4))
+        self.graph_title = ttk.Label(graph_header, text="Graph / Analysis", style="Category.TLabel")
+        self.graph_title.pack(side="left")
+        ttk.Button(graph_header, text="✕ Close", width=7, command=self.hide_graph_panel).pack(side="right")
+
+        # Interactive channel selection filter toolbar for RGB Histograms
+        self.channel_filter_frame = ttk.Frame(self.graph_panel)
+        ttk.Label(self.channel_filter_frame, text="Channels:", font=("TkDefaultFont", 8, "bold")).pack(side="left", padx=(0, 4))
+        self.hist_r_var = tk.BooleanVar(value=True)
+        self.hist_g_var = tk.BooleanVar(value=True)
+        self.hist_b_var = tk.BooleanVar(value=True)
+
+        self.r_cb = ttk.Checkbutton(self.channel_filter_frame, text="Red", variable=self.hist_r_var, command=self._on_hist_channel_toggle)
+        self.r_cb.pack(side="left", padx=2)
+        self.g_cb = ttk.Checkbutton(self.channel_filter_frame, text="Green", variable=self.hist_g_var, command=self._on_hist_channel_toggle)
+        self.g_cb.pack(side="left", padx=2)
+        self.b_cb = ttk.Checkbutton(self.channel_filter_frame, text="Blue", variable=self.hist_b_var, command=self._on_hist_channel_toggle)
+        self.b_cb.pack(side="left", padx=2)
+
+        self._active_hist_img_np: np.ndarray | None = None
+
+        self.graph_view = ImageView(self.graph_panel, default_filename="graph_plot.png")
+        self.graph_view.pack(fill="both", expand=True)
+        self._graph_panel_visible = False
+
+        inspector = ttk.Frame(self.body, padding=12, width=240)
         inspector.pack_propagate(False)
-        body.add(inspector, weight=0)
+        self.body.add(inspector, weight=0)
         ttk.Label(inspector, text="Results", style="Title.TLabel").pack(anchor="w", pady=(0, 10))
         self.results = ttk.Treeview(inspector, columns=("value",), show="tree headings", height=15)
         self.results.heading("#0", text="Property")
@@ -118,6 +188,53 @@ class MainWindow:
         self.results.pack(fill="both", expand=True)
 
         ttk.Label(container, textvariable=self.status, anchor="w", padding=(10, 6), relief="sunken").pack(fill="x")
+
+    def show_graph(
+        self,
+        graph_image: Image.Image,
+        title: str = "Graph / Analysis",
+        is_rgb_hist: bool = False,
+        hist_img_np: np.ndarray | None = None,
+    ) -> None:
+        """Display a graph/visualization in the side panel without affecting current image."""
+        self.graph_title.configure(text=title)
+        self.graph_view.show(graph_image)
+        self.graph_view.set_default_filename(f"{title.lower().replace(' ', '_')}.png")
+
+        if is_rgb_hist and hist_img_np is not None:
+            self._active_hist_img_np = hist_img_np
+            self.hist_r_var.set(True)
+            self.hist_g_var.set(True)
+            self.hist_b_var.set(True)
+            self.channel_filter_frame.pack(after=self.graph_title.master, fill="x", pady=(2, 4))
+        else:
+            self._active_hist_img_np = None
+            self.channel_filter_frame.pack_forget()
+
+        if not self._graph_panel_visible:
+            # Insert graph panel before inspector
+            self.body.insert(2, self.graph_panel, weight=2)
+            self._graph_panel_visible = True
+
+    def _on_hist_channel_toggle(self) -> None:
+        if self._active_hist_img_np is None:
+            return
+        from forensics_app.tools.histogram import plot_skimage_histogram
+        stem = self.document.path.stem if self.document.path else "Image"
+        updated_fig = plot_skimage_histogram(
+            self._active_hist_img_np,
+            show_r=self.hist_r_var.get(),
+            show_g=self.hist_g_var.get(),
+            show_b=self.hist_b_var.get(),
+            title=f"{stem} (RGB Histogram)",
+        )
+        self.graph_view.show(updated_fig)
+
+    def hide_graph_panel(self) -> None:
+        """Hide the graph side panel."""
+        if self._graph_panel_visible:
+            self.body.forget(self.graph_panel)
+            self._graph_panel_visible = False
 
     def _bind_shortcuts(self) -> None:
         self.root.bind_all("<Control-o>", lambda _event: self.open_image())
@@ -172,6 +289,20 @@ class MainWindow:
             return
         if result.image is not None:
             self.document.apply(result.image)
+        if result.graph is not None:
+            is_hist = (tool.tool_id == "histogram")
+            is_rgb = False
+            hist_np = None
+            if is_hist and self.document.current is not None:
+                is_rgb = self.document.current.mode not in ("L", "1")
+                if is_rgb:
+                    hist_np = np.array(self.document.current.convert("RGB"))
+            self.show_graph(
+                result.graph,
+                title=f"{tool.title} Graph",
+                is_rgb_hist=(is_hist and is_rgb),
+                hist_img_np=hist_np,
+            )
         self._show_details(result.details)
         self.status.set(result.message)
         self._refresh()
@@ -202,6 +333,8 @@ class MainWindow:
 
     def _refresh(self) -> None:
         self.image_view.show(self.document.current)
+        if self.document.path:
+            self.image_view.set_default_filename(f"{self.document.path.stem}_result.png")
         self.undo_button.configure(state="normal" if self.document.can_undo else "disabled")
         self.redo_button.configure(state="normal" if self.document.can_redo else "disabled")
         title = self.document.path.name if self.document.path else "No image"

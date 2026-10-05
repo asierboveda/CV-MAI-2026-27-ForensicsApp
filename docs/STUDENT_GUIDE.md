@@ -5,6 +5,7 @@ adding computer-vision functionality while retaining one usable desktop app.
 Each feature should be easy to demonstrate in class and easy for another person  
 to find in the code.
 
+
 ## 1\. Setup and first run
 
 Install Python 3.10 or newer, open a terminal in the project folder, and create  

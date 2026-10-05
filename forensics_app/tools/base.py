@@ -14,11 +14,13 @@ from forensics_app.core import ImageDocument
 
 @dataclass(frozen=True)
 class ToolResult:
-    """A tool may produce an image, textual measurements, or both."""
+    """A tool may produce an image, a side-panel graph/visualization, textual measurements, or all three."""
 
     message: str
     image: Image.Image | None = None
+    graph: Image.Image | None = None
     details: dict[str, Any] = field(default_factory=dict)
+
 
 
 class ForensicsTool(ABC):
