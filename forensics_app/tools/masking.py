@@ -68,56 +68,26 @@ def composite_texture_or_overlay(
     base_np: np.ndarray,
     mask_np_rgb: np.ndarray,
     texture_np: np.ndarray | None = None,
-    mode: str = "tiled",
-    preserve_shading: bool = True,
     threshold: int = 135,
 ) -> np.ndarray:
-    """Composite a mask or texture onto a base image for pixels > threshold (default 135).
-    
-    Modes:
-    - "overlay": Use the mask's original RGB pixels (e.g. yellow coat).
-    - "tiled": Tile the texture repeating across the image dimensions.
-    - "resized": Resize the texture to fit the image dimensions.
-    """
+    """Composite a mask or texture onto a base image for pixels > threshold (default 135)."""
     h, w = base_np.shape[:2]
     binary_mask = extract_binary_mask(Image.fromarray(mask_np_rgb), threshold=threshold)
 
-    # Resize binary mask if dimensions differ from base
-    if binary_mask.shape[:2] != (h, w):
-        mask_pil = Image.fromarray(binary_mask.astype(np.uint8) * 255).resize(
-            (w, h), Image.Resampling.NEAREST
-        )
-        binary_mask = np.array(mask_pil) > 127
-
     output = base_np.copy()
 
-    if texture_np is None or mode == "overlay":
+    if texture_np is None:
         # Direct mask color overlay
-        mask_resized = np.array(
-            Image.fromarray(mask_np_rgb[:, :, :3]).resize((w, h), Image.Resampling.BILINEAR)
-        )
-        output[binary_mask] = mask_resized[binary_mask]
+        output[binary_mask] = mask_np_rgb[:, :, :3][binary_mask]
         return output
 
-    # Handle texture
-    th, tw = texture_np.shape[:2]
-    if mode == "tiled":
-        reps_y = int(np.ceil(h / th))
-        reps_x = int(np.ceil(w / tw))
-        pattern = np.tile(texture_np[:, :, :3], (reps_y, reps_x, 1))[:h, :w]
-    else:  # "resized"
+    # Handle texture: resize to match base image dimensions if needed
+    if texture_np.shape[:2] != (h, w):
         pattern = np.array(
             Image.fromarray(texture_np[:, :, :3]).resize((w, h), Image.Resampling.BILINEAR)
         )
-
-    if preserve_shading and np.any(binary_mask):
-        mask_resized = np.array(
-            Image.fromarray(mask_np_rgb[:, :, :3]).resize((w, h), Image.Resampling.BILINEAR)
-        )
-        shading = mask_resized.mean(axis=-1, keepdims=True) / 255.0
-        norm_factor = shading[binary_mask].mean() + 1e-6
-        shading_norm = np.clip(shading / norm_factor, 0.2, 1.8)
-        pattern = np.clip(pattern.astype(np.float32) * shading_norm, 0, 255).astype(np.uint8)
+    else:
+        pattern = texture_np[:, :, :3]
 
     output[binary_mask] = pattern[binary_mask]
     return output
@@ -157,36 +127,6 @@ def create_masking_comparison_strip(
     return Image.open(buf)
 
 
-def create_coins_mask_comparison(
-    image: np.ndarray, mask: np.ndarray, masked1: np.ndarray, masked2: np.ndarray
-) -> Image.Image:
-    """Generate the 4-panel binary masking demonstration matching the course coins example."""
-    fig, ax = plt.subplots(1, 4, figsize=(12, 3.8), dpi=100)
-    fig.patch.set_facecolor("#ffffff")
-
-    ax[0].imshow(image, cmap="gray" if image.ndim == 2 else None)
-    ax[0].set_title("Original image", fontsize=10, fontweight="bold")
-
-    ax[1].imshow(mask, cmap="gray")
-    ax[1].set_title("Binary mask", fontsize=10, fontweight="bold")
-
-    ax[2].imshow(masked1, cmap="gray" if masked1.ndim == 2 else None)
-    ax[2].set_title("Masked image 1 (>135)", fontsize=10, fontweight="bold")
-
-    ax[3].imshow(masked2, cmap="gray" if masked2.ndim == 2 else None)
-    ax[3].set_title("Masked image 2 (≤135)", fontsize=10, fontweight="bold")
-
-    for a in ax:
-        a.axis("off")
-
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    buf.seek(0)
-    return Image.open(buf)
-
 
 class MaskingTool(ForensicsTool):
     tool_id = "masking"
@@ -205,7 +145,7 @@ class MaskingTool(ForensicsTool):
         if config is None:
             return None
 
-        mask_pil, texture_pil, texture_mode, preserve_shading, threshold_val, mask_name, tex_name = config
+        mask_pil, texture_pil, threshold_val, mask_name, tex_name = config
 
         mask_np = np.array(mask_pil)
         texture_np = np.array(texture_pil) if texture_pil is not None else None
@@ -215,8 +155,6 @@ class MaskingTool(ForensicsTool):
             base_np=base_np,
             mask_np_rgb=mask_np,
             texture_np=texture_np,
-            mode=texture_mode,
-            preserve_shading=preserve_shading,
             threshold=threshold_val,
         )
 
@@ -230,8 +168,6 @@ class MaskingTool(ForensicsTool):
             "Intensity Threshold": f"> {threshold_val}",
             "Masked area (px)": f"{mask_pixels:,} px",
             "Mask coverage": f"{mask_pct:.2f}%",
-            "Texture mode": texture_mode.capitalize(),
-            "Shading blend": "Enabled" if preserve_shading else "Disabled",
         }
 
         out_img = Image.fromarray(applied_np)
@@ -241,7 +177,7 @@ class MaskingTool(ForensicsTool):
 
     def _prompt_masking_dialog(
         self, parent: tk.Misc
-    ) -> tuple[Image.Image, Image.Image | None, str, bool, int, str, str] | None:
+    ) -> tuple[Image.Image, Image.Image | None, int, str, str] | None:
         dialog = tk.Toplevel(parent)
         dialog.title("Masking & Texture Settings")
         dialog.geometry("520x460")
@@ -397,34 +333,17 @@ class MaskingTool(ForensicsTool):
         opt_frame = ttk.Frame(content_frame)
         opt_frame.pack(fill="x", pady=6)
 
-        ttk.Label(opt_frame, text="Texture Mode:").grid(row=0, column=0, sticky="w", pady=2)
-        mode_cb = ttk.Combobox(opt_frame, values=["Tiled", "Resized", "Direct Mask Color"], state="readonly", width=16)
-        mode_cb.current(0)
-        mode_cb.grid(row=0, column=1, sticky="w", padx=6, pady=2)
-
-        ttk.Label(opt_frame, text="Mask Threshold (>):").grid(row=0, column=2, sticky="w", padx=(10, 4), pady=2)
-        thresh_entry = ttk.Entry(opt_frame, width=6)
+        ttk.Label(opt_frame, text="Mask Threshold (>):").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=2)
+        thresh_entry = ttk.Entry(opt_frame, width=8)
         thresh_entry.insert(0, "135")
-        thresh_entry.grid(row=0, column=3, sticky="w", pady=2)
+        thresh_entry.grid(row=0, column=1, sticky="w", pady=2)
 
-        shading_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(opt_frame, text="Preserve folds & shading", variable=shading_var).grid(
-            row=1, column=0, columnspan=4, sticky="w", pady=6
-        )
-
-        result: list[tuple[Image.Image, Image.Image | None, str, bool, int, str, str] | None] = [None]
+        result: list[tuple[Image.Image, Image.Image | None, int, str, str] | None] = [None]
 
         def on_ok() -> None:
             if current_mask_img[0] is None:
                 tk.messagebox.showwarning("Mask Required", "Please add a mask/coat image first.", parent=dialog)
                 return
-            m_mode_raw = mode_cb.get()
-            if m_mode_raw == "Tiled":
-                mode_str = "tiled"
-            elif m_mode_raw == "Resized":
-                mode_str = "resized"
-            else:
-                mode_str = "overlay"
             try:
                 t_val = int(thresh_entry.get().strip() or "135")
             except ValueError:
@@ -432,8 +351,6 @@ class MaskingTool(ForensicsTool):
             result[0] = (
                 current_mask_img[0],
                 current_tex_img[0],
-                mode_str,
-                shading_var.get(),
                 t_val,
                 current_mask_name[0],
                 current_tex_name[0],
