@@ -17,15 +17,13 @@ class ImageDocument:
 
     def __init__(self) -> None:
         self.path: Path | None = None
-        self.original: Image.Image | None = None
-        self.current: Image.Image | None = None
-        self._undo: list[Image.Image] = []
-        self._redo: list[Image.Image] = []
-
-    @property
-    def is_loaded(self) -> bool:
+        self.original: Image.Image | None = None 
+        self.current: Image.Image | None = None 
+        self._undo: list[Image.Image] = [] 
+        self._redo: list[Image.Image] = [] 
+    @property 
+    def is_loaded(self) -> bool: 
         return self.current is not None
-
     @property
     def can_undo(self) -> bool:
         return bool(self._undo)
