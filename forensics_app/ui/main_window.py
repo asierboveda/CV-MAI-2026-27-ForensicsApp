@@ -164,7 +164,8 @@ class MainWindow:
         try:
             result = tool.run(self.root, self.document)
         except Exception as error:  # keep one student feature from crashing the shell
-            messagebox.showerror(f"{tool.title} failed", str(error), parent=self.root)
+            msg = str(error) or f"An error occurred: {type(error).__name__}"
+            messagebox.showerror(f"{tool.title} failed", msg, parent=self.root)
             self.status.set(f"Error in {tool.title}.")
             return
         if result is None:
