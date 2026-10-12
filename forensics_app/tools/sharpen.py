@@ -30,6 +30,19 @@ class SharpenTool(ForensicsTool):
 
         is_color = document.current.mode not in {"1", "L", "I", "F"}
         pixels = np.array(document.current.convert("RGB" if is_color else "L"), dtype=np.float64)
+        # Alternativa manual estudiada: desenfocar, extraer el detalle y sumarlo.
+        # Usamos el mismo radio y tratamiento de canales que en unsharp_mask.
+        # mode="reflect" iguala también el tratamiento de los bordes de la imagen.
+        # blurred = filters.gaussian(
+        #     pixels, sigma=1.0, mode="reflect", preserve_range=True,
+        #     channel_axis=2 if is_color else None,
+        # )
+        # detail = pixels - blurred
+        # sharpened = pixels + amount * detail
+
+        # Versión utilizada: unsharp_mask realiza ese mismo cálculo internamente.
+        # El ejemplo del PDF usa radius=2 y amount=1.5; aquí el radio es 1.0
+        # y el usuario configura amount. Ambas alternativas comparten el clip final.
         sharpened = filters.unsharp_mask(
             pixels, radius=1.0, amount=amount, preserve_range=True,
             channel_axis=2 if is_color else None,
