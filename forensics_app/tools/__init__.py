@@ -12,6 +12,7 @@ from .contrast_stretch import ContrastStretchTool
 from .convolution import ConvolutionTool
 from .skimage_filters import SkimageFiltersTool
 from .morphology import MorphologyTool
+from .canny import CannyTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -27,6 +28,7 @@ def build_tool_registry() -> ToolRegistry:
             ConvolutionTool(),
             SkimageFiltersTool(),
             MorphologyTool(),
+            CannyTool(),
         ]
     )
 
