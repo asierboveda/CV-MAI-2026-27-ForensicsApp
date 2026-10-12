@@ -14,6 +14,7 @@ from .skimage_filters import SkimageFiltersTool
 from .morphology import MorphologyTool
 from .canny import CannyTool
 from .edge_overlay import EdgeOverlayTool
+from .sharpen import SharpenTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -31,6 +32,7 @@ def build_tool_registry() -> ToolRegistry:
             MorphologyTool(),
             CannyTool(),
             EdgeOverlayTool(),
+            SharpenTool(),
         ]
     )
 
