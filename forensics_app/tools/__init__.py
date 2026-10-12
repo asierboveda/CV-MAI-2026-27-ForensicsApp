@@ -13,6 +13,7 @@ from .convolution import ConvolutionTool
 from .skimage_filters import SkimageFiltersTool
 from .morphology import MorphologyTool
 from .canny import CannyTool
+from .edge_overlay import EdgeOverlayTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -29,6 +30,7 @@ def build_tool_registry() -> ToolRegistry:
             SkimageFiltersTool(),
             MorphologyTool(),
             CannyTool(),
+            EdgeOverlayTool(),
         ]
     )
 
