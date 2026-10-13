@@ -101,18 +101,48 @@ class SkimageFiltersTool(ForensicsTool):
             return None
 
         name, param, axis_choice = dialog.result
-        is_color = document.current.mode not in {"1", "L", "I", "F"}
-        details = {"Operation": "Skimage Filter", "Filter": name}
+        details = {
+            "Operation": "Skimage Filter",
+            "Filter": name,
+        }
 
         if name == "Gaussian":
-            arr = np.array(document.current.convert("RGB") if is_color else document.current.convert("L"), dtype=np.float64)
-            channel_axis = -1 if is_color else None
-            res = filters.gaussian(arr, sigma=param, channel_axis=channel_axis, preserve_range=True)
+            image = document.current
+
+            # Grayscale
+            if image.mode in {"1", "L", "I", "F"}:
+                arr = np.array(image, dtype=np.float64)
+
+                res = filters.gaussian(
+                    arr,
+                    sigma=param,
+                    channel_axis=None,
+                    preserve_range=True,
+                )
+
+            # Colour
+            else:
+                rgb = image.convert("RGB")
+                arr = np.array(rgb, dtype=np.float64)
+
+                res = filters.gaussian(
+                    arr,
+                    sigma=param,
+                    channel_axis=-1,
+                    preserve_range=True,
+                )
+
             out_arr = np.clip(res, 0, 255).astype(np.uint8)
             details["Sigma"] = param
+
         else:
-            gray = np.array(document.current.convert("L"), dtype=np.float64) / 255.0
+            gray = np.array(
+                document.current.convert("L"),
+                dtype=np.float64
+            ) / 255.0
+
             axis_param = None
+
             if axis_choice == "Horizontal":
                 axis_param = 0
             elif axis_choice == "Vertical":
@@ -120,25 +150,44 @@ class SkimageFiltersTool(ForensicsTool):
 
             if name == "Sobel":
                 res = filters.sobel(gray, axis=axis_param)
-                out_arr = np.clip(np.abs(res) * 255, 0, 255).astype(np.uint8)
+                out_arr = np.clip(
+                    np.abs(res) * 255, 0, 255
+                ).astype(np.uint8)
                 details["Axis"] = axis_choice or "Both (Magnitude)"
+
             elif name == "Prewitt":
                 res = filters.prewitt(gray, axis=axis_param)
-                out_arr = np.clip(np.abs(res) * 255, 0, 255).astype(np.uint8)
+                out_arr = np.clip(
+                    np.abs(res) * 255, 0, 255
+                ).astype(np.uint8)
                 details["Axis"] = axis_choice or "Both (Magnitude)"
+
             elif name == "Scharr":
                 res = filters.scharr(gray, axis=axis_param)
-                out_arr = np.clip(np.abs(res) * 255, 0, 255).astype(np.uint8)
+                out_arr = np.clip(
+                    np.abs(res) * 255, 0, 255
+                ).astype(np.uint8)
                 details["Axis"] = axis_choice or "Both (Magnitude)"
+
             elif name == "Otsu Threshold":
-                gray_u8 = np.array(document.current.convert("L"), dtype=np.uint8)
+                gray_u8 = np.array(
+                    document.current.convert("L"),
+                    dtype=np.uint8
+                )
+
                 threshold = filters.threshold_otsu(gray_u8)
-                out_arr = ((gray_u8 > threshold) * 255).astype(np.uint8)
+
+                out_arr = (
+                    (gray_u8 > threshold) * 255
+                ).astype(np.uint8)
+
                 details["Threshold"] = threshold
+
             else:
                 return None
 
         output = Image.fromarray(out_arr)
+
         return ToolResult(
             image=output,
             message=f"Applied {name} filter from skimage.filters.",
