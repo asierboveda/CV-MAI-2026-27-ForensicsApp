@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from scipy import ndimage
 
 from forensics_app.core import ImageDocument
@@ -88,19 +88,18 @@ class ConvolutionTool(ForensicsTool):
             return None
 
         size, direction = dialog.result
-        gray = np.array(document.current.convert("L"), dtype=np.float64)
+        gray = np.array(ImageOps.grayscale(document.current), dtype=np.float64)
 
         if direction == "Horizontal (1D)":
             mask = np.ones((1, size), dtype=np.float64) / size
-            conv = ndimage.uniform_filter1d(gray, size=size, axis=1) if size > 64 else ndimage.convolve(gray, mask)
         elif direction == "Vertical (1D)":
             mask = np.ones((size, 1), dtype=np.float64) / size
-            conv = ndimage.uniform_filter1d(gray, size=size, axis=0) if size > 64 else ndimage.convolve(gray, mask)
         else:
             mask = np.ones((size, size), dtype=np.float64) / (size * size)
-            conv = ndimage.uniform_filter(gray, size=size) if size > 64 else ndimage.convolve(gray, mask)
 
-        output = Image.fromarray(np.clip(conv, 0, 255).astype(np.uint8))
+        conv = ndimage.convolve(gray, mask)
+
+        output = Image.fromarray(np.clip(np.round(conv), 0, 255).astype(np.uint8))
 
         return ToolResult(
             image=output,
