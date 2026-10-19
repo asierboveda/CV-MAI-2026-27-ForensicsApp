@@ -15,6 +15,9 @@ from .morphology import MorphologyTool
 from .canny import CannyTool
 from .edge_overlay import EdgeOverlayTool
 from .sharpen import SharpenTool
+from .cross_correlation import NormalizedCrossCorrelationTool
+from .template_matching import TemplateMatchingTool
+from .hog import HOGTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -33,8 +36,12 @@ def build_tool_registry() -> ToolRegistry:
             CannyTool(),
             EdgeOverlayTool(),
             SharpenTool(),
+            NormalizedCrossCorrelationTool(),
+            TemplateMatchingTool(),
+            HOGTool(),
         ]
     )
 
 
 __all__ = ["ToolRegistry", "build_tool_registry"]
+
