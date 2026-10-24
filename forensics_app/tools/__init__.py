@@ -15,6 +15,9 @@ from .morphology import MorphologyTool
 from .canny import CannyTool
 from .edge_overlay import EdgeOverlayTool
 from .sharpen import SharpenTool
+from .corner_detection import CornerDetectionTool
+from .descriptor_extractor import DescriptorExtractorTool
+from .feature_matching import FeatureMatchingTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -33,6 +36,9 @@ def build_tool_registry() -> ToolRegistry:
             CannyTool(),
             EdgeOverlayTool(),
             SharpenTool(),
+            CornerDetectionTool(),
+            DescriptorExtractorTool(),
+            FeatureMatchingTool(),
         ]
     )
 
