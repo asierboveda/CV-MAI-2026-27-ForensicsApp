@@ -15,6 +15,9 @@ from .morphology import MorphologyTool
 from .canny import CannyTool
 from .edge_overlay import EdgeOverlayTool
 from .sharpen import SharpenTool
+from .normalized_cross_corr import Norm_cross_corr      
+from .hog import HOGTool
+from .person_detection import PersonDetectionTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -33,6 +36,9 @@ def build_tool_registry() -> ToolRegistry:
             CannyTool(),
             EdgeOverlayTool(),
             SharpenTool(),
+            Norm_cross_corr(),
+            HOGTool(),
+            PersonDetectionTool(),
         ]
     )
 
