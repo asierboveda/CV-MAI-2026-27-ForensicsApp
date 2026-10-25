@@ -18,6 +18,9 @@ from .sharpen import SharpenTool
 from .normalized_cross_corr import Norm_cross_corr      
 from .hog import HOGTool
 from .person_detection import PersonDetectionTool
+from .corner_detection import CornerDetectionTool
+from .descriptor_extractor import DescriptorExtractorTool
+from .feature_matching import FeatureMatchingTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -39,6 +42,9 @@ def build_tool_registry() -> ToolRegistry:
             Norm_cross_corr(),
             HOGTool(),
             PersonDetectionTool(),
+            CornerDetectionTool(),
+            DescriptorExtractorTool(),
+            FeatureMatchingTool(),
         ]
     )
 
