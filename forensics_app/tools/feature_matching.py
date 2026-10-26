@@ -313,8 +313,8 @@ class FeatureMatchingTool(ForensicsTool):
         method = cfg["method"]
         ransac_threshold = simpledialog.askfloat(
             "RANSAC",
-            "Umbral de error geométrico en píxeles.\n"
-            "Aceptar: aplicar RANSAC. Cancelar: continuar sin RANSAC.",
+            "Geometric error threshold in pixels.\n"
+            "OK: apply RANSAC. Cancel: continue without RANSAC.",
             initialvalue=3.0,
             minvalue=0.001,
             parent=parent,
