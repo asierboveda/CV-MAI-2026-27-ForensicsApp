@@ -14,7 +14,8 @@ import numpy as np
 from PIL import Image
 from skimage import color, feature
 from skimage.feature import SIFT, match_descriptors, plot_matched_features
-
+from skimage.measure import ransac
+from skimage.transform import ProjectiveTransform
 from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
 
@@ -32,6 +33,7 @@ def match_features_between(
     sigma_min: float = 1.6,
     title1: str = "Image 1",
     title2: str = "Image 2",
+    ransac_threshold: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, Image.Image]:
     """Extract features from two images, match descriptors, and render side-by-side plot.
 
@@ -81,6 +83,22 @@ def match_features_between(
             metric=chosen_metric,
         )
 
+    # We need 4 points to estimate an homography
+
+    if ransac_threshold is not None and len(matches) >= 4:
+        src_points = kp1[matches[:, 0]][:, ::-1]
+        dst_points = kp2[matches[:, 1]][:, ::-1]
+
+        model, inliers = ransac(
+            (src_points, dst_points),
+            ProjectiveTransform,
+            min_samples=4,
+            residual_threshold=ransac_threshold,
+            max_trials=1000,
+        )
+
+        if model is not None and inliers is not None:
+            matches = matches[inliers]
     # Render side-by-side plot with rainbow match lines (matching PPT slide 4 & 5)
     fig, ax = plt.subplots(figsize=(12, 6), dpi=100)
     plot_matched_features(
@@ -180,8 +198,7 @@ class FeatureMatchingDialog(simpledialog.Dialog):
         filename = filedialog.askopenfilename(
             title="Select second image for matching",
             filetypes=[
-                ("Image files", "*.png;*.jpg;*.jpeg;*.bmp;*.tiff;*.webp"),
-                ("All files", "*.*"),
+                ("Image files", ("*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tiff", "*.webp")),
             ],
             parent=self,
         )
@@ -294,6 +311,14 @@ class FeatureMatchingTool(ForensicsTool):
         second_name = second_path.name
 
         method = cfg["method"]
+        ransac_threshold = simpledialog.askfloat(
+            "RANSAC",
+            "Umbral de error geométrico en píxeles.\n"
+            "Aceptar: aplicar RANSAC. Cancelar: continuar sin RANSAC.",
+            initialvalue=3.0,
+            minvalue=0.001,
+            parent=parent,
+        )
         kp1, kp2, matches, visual = match_features_between(
             document.current,
             image2,
@@ -307,6 +332,7 @@ class FeatureMatchingTool(ForensicsTool):
             sigma_min=cfg["sigma_min"],
             title1=ref_name,
             title2=second_name,
+            ransac_threshold=ransac_threshold,
         )
 
         chosen_metric = cfg["metric"] or ("hamming" if method == "ORB" else "euclidean")

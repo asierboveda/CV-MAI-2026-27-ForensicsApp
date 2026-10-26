@@ -21,6 +21,7 @@ from .person_detection import PersonDetectionTool
 from .corner_detection import CornerDetectionTool
 from .descriptor_extractor import DescriptorExtractorTool
 from .feature_matching import FeatureMatchingTool
+from .folder_match import FolderMatchingTool
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -45,6 +46,7 @@ def build_tool_registry() -> ToolRegistry:
             CornerDetectionTool(),
             DescriptorExtractorTool(),
             FeatureMatchingTool(),
+            FolderMatchingTool(),
         ]
     )
 
