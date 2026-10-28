@@ -25,7 +25,7 @@ class PersonDetectionTool(ForensicsTool):
             title = "Select the person template",
             parent = parent,
         )
-        if filename is None:
+        if not filename:
             return None
         with Image.open(filename) as source:
             template = source.convert("RGB")
@@ -35,11 +35,13 @@ class PersonDetectionTool(ForensicsTool):
         height, width = template_array.shape[:2]
         image_height, image_width = image_array.shape[:2]
         
-        template_features = hog(template_array,
-                                orientations=16,
-                                pixels_per_cell=(8, 8),
-                                cells_per_block=(2, 2),
-                                channel_axis=-1,)
+        hog_parameters = {
+            "orientations": 10,
+            "pixels_per_cell": (8, 8),
+            "cells_per_block": (2, 2),
+            "channel_axis": -1,
+        }
+        template_features = hog(template_array, **hog_parameters)
 
         best_distance = float("inf")
         best_product = -float("inf")
@@ -49,11 +51,7 @@ class PersonDetectionTool(ForensicsTool):
         for y in range(0, image_height - height + 1, step_size):
             for x in range(0, image_width - width + 1, step_size):
                 region = image_array[y:y + height, x:x + width]
-                features = hog(region,
-                                orientations=16,
-                                pixels_per_cell=(8, 8),
-                                cells_per_block=(2, 2),
-                                channel_axis=-1,)
+                features = hog(region, **hog_parameters)
 
                 distance = np.linalg.norm(template_features - features)
                 product = np.dot(template_features, features)
@@ -85,6 +83,5 @@ class PersonDetectionTool(ForensicsTool):
 
         return ToolResult(
             image=output,
-            message="Red: euclidean, Blue: dot"
+            message="Red: Euclidean distance, cyan: dot product."
         )
-        

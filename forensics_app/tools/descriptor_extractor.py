@@ -41,10 +41,18 @@ def extract_descriptors(
             keypoints = np.empty((0, 2), dtype=float)
             descriptors = np.empty((0, 256), dtype=bool)
     elif method_upper == "SIFT":
+        if n_octaves < 1 or n_scales < 1:
+            raise ValueError("SIFT n_octaves and n_scales must be >= 1.")
+        if min(img_gray.shape) < 6:
+            raise ValueError("SIFT requires images of at least 6 x 6 pixels.")
         sift_ref = SIFT(n_octaves=n_octaves, n_scales=n_scales, sigma_min=sigma_min)
-        sift_ref.detect_and_extract(img_gray)
-        keypoints = sift_ref.keypoints
-        descriptors = sift_ref.descriptors
+        try:
+            sift_ref.detect_and_extract(img_gray)
+            keypoints = sift_ref.keypoints
+            descriptors = sift_ref.descriptors
+        except RuntimeError:
+            keypoints = np.empty((0, 2), dtype=float)
+            descriptors = np.empty((0, 128), dtype=np.uint8)
     else:
         raise ValueError(f"Unknown descriptor extractor method: {method}")
 

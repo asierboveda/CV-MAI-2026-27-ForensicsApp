@@ -108,6 +108,8 @@ class SkimageFiltersTool(ForensicsTool):
 
         if name == "Gaussian":
             image = document.current
+            if image.mode == "1":
+                image = image.convert("L")
 
             # Grayscale
             if image.mode in {"1", "L", "I", "F"}:

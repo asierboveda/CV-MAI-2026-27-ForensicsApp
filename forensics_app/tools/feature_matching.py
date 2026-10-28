@@ -23,7 +23,7 @@ from .base import ForensicsTool, ToolResult
 def match_features_between(
     image1: Image.Image,
     image2: Image.Image,
-    method: str = "ORB",
+    method: str = "SIFT",
     cross_check: bool = True,
     max_ratio: float = 0.8,
     metric: str | None = None,
@@ -37,10 +37,16 @@ def match_features_between(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, Image.Image]:
     """Extract features from two images, match descriptors, and render side-by-side plot.
 
+    Images are limited to 1000 pixels per dimension, preserving aspect ratio.
+    Returned keypoints refer to these resized images.
     Returns (keypoints1, keypoints2, matches, visualization_image).
     """
-    gray1 = color.rgb2gray(np.array(image1.convert("RGB")))
-    gray2 = color.rgb2gray(np.array(image2.convert("RGB")))
+    image1 = image1.convert("RGB")
+    image2 = image2.convert("RGB")
+    image1.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
+    image2.thumbnail((1000, 1000), Image.Resampling.LANCZOS)
+    gray1 = color.rgb2gray(np.array(image1))
+    gray2 = color.rgb2gray(np.array(image2))
 
     method_upper = method.upper()
     if method_upper == "ORB":
@@ -60,12 +66,22 @@ def match_features_between(
         chosen_metric = "hamming" if metric in (None, "auto") else metric
 
     elif method_upper == "SIFT":
+        if n_octaves < 1 or n_scales < 1:
+            raise ValueError("SIFT n_octaves and n_scales must be >= 1.")
+        if min(gray1.shape) < 6 or min(gray2.shape) < 6:
+            raise ValueError("SIFT requires images of at least 6 x 6 pixels.")
         extractor = SIFT(n_octaves=n_octaves, n_scales=n_scales, sigma_min=sigma_min)
-        extractor.detect_and_extract(gray1)
-        kp1, desc1 = extractor.keypoints, extractor.descriptors
+        try:
+            extractor.detect_and_extract(gray1)
+            kp1, desc1 = extractor.keypoints, extractor.descriptors
+        except RuntimeError:
+            kp1, desc1 = np.empty((0, 2)), np.empty((0, 128), dtype=np.uint8)
 
-        extractor.detect_and_extract(gray2)
-        kp2, desc2 = extractor.keypoints, extractor.descriptors
+        try:
+            extractor.detect_and_extract(gray2)
+            kp2, desc2 = extractor.keypoints, extractor.descriptors
+        except RuntimeError:
+            kp2, desc2 = np.empty((0, 2)), np.empty((0, 128), dtype=np.uint8)
 
         chosen_metric = "euclidean" if metric in (None, "auto") else metric
     else:
@@ -127,7 +143,7 @@ class FeatureMatchingDialog(simpledialog.Dialog):
 
     def __init__(self, parent: tk.Misc, title: str = "Feature Matching") -> None:
         self.second_path = ""
-        self.method = "ORB"
+        self.method = "SIFT"
         self.cross_check = True
         self.max_ratio = 0.8
         self.n_keypoints = 500
@@ -153,7 +169,7 @@ class FeatureMatchingDialog(simpledialog.Dialog):
             values=["ORB", "SIFT"],
             state="readonly",
         )
-        self.method_combo.set("ORB")
+        self.method_combo.set("SIFT")
         self.method_combo.grid(row=1, column=1, sticky="ew", padx=6, pady=4)
         self.method_combo.bind("<<ComboboxSelected>>", self._on_method_change)
 
@@ -179,7 +195,7 @@ class FeatureMatchingDialog(simpledialog.Dialog):
         self.n_keypoints_entry.insert(0, "500")
         self.n_keypoints_entry.grid(row=4, column=1, sticky="ew", padx=6, pady=4)
 
-        # SIFT config (initially hidden)
+        # SIFT config
         self.n_octaves_label = ttk.Label(master, text="SIFT n_octaves:")
         self.n_octaves_entry = ttk.Entry(master)
         self.n_octaves_entry.insert(0, "8")
@@ -192,6 +208,7 @@ class FeatureMatchingDialog(simpledialog.Dialog):
         self.sigma_min_entry = ttk.Entry(master)
         self.sigma_min_entry.insert(0, "1.6")
 
+        self._on_method_change()
         return self.path_entry
 
     def _browse_image(self) -> None:
@@ -256,8 +273,15 @@ class FeatureMatchingDialog(simpledialog.Dialog):
                 return False
         else:
             try:
-                int(self.n_octaves_entry.get())
-                int(self.n_scales_entry.get())
+                octaves = int(self.n_octaves_entry.get())
+                scales = int(self.n_scales_entry.get())
+                if octaves < 1 or scales < 1:
+                    messagebox.showerror(
+                        "Invalid Input",
+                        "n_octaves and n_scales must be >= 1.",
+                        parent=self,
+                    )
+                    return False
                 sigma = float(self.sigma_min_entry.get())
                 if sigma <= 0:
                     messagebox.showerror("Invalid Input", "sigma_min must be > 0.", parent=self)
@@ -313,7 +337,7 @@ class FeatureMatchingTool(ForensicsTool):
         method = cfg["method"]
         ransac_threshold = simpledialog.askfloat(
             "RANSAC",
-            "Geometric error threshold in pixels.\n"
+            "Geometric error threshold in resized-image pixels.\n"
             "OK: apply RANSAC. Cancel: continue without RANSAC.",
             initialvalue=3.0,
             minvalue=0.001,
@@ -346,6 +370,7 @@ class FeatureMatchingTool(ForensicsTool):
             "Cross check": cfg["cross_check"],
             "Max ratio": cfg["max_ratio"],
             "Metric": chosen_metric,
+            "Max image dimension (px)": 1000,
         }
 
         return ToolResult(

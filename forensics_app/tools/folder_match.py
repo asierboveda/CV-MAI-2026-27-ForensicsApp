@@ -15,7 +15,7 @@ class FolderMatchingTool(ForensicsTool):
     tool_id = "folder_matching"
     title = "Find closest image in folder"
     category = "Set 5"
-    description = "Find the image with the most ORB matches."
+    description = "Find the image with the most SIFT matches after resizing."
 
     def run(
         self,
@@ -60,21 +60,20 @@ class FolderMatchingTool(ForensicsTool):
             try:
                 with Image.open(path) as image:
                     candidate = image.convert("RGB")
-            except (UnidentifiedImageError, OSError):
+
+                _, _, matches, visual = match_features_between(
+                    document.current,
+                    candidate,
+                    method="SIFT",
+                    cross_check=True,
+                    max_ratio=0.8,
+                    title1=reference_name,
+                    title2=path.name,
+                    ransac_threshold=None,
+                )
+            except (UnidentifiedImageError, OSError, ValueError):
                 skipped += 1
                 continue
-
-            _, _, matches, visual = match_features_between(
-                document.current,
-                candidate,
-                method="ORB",
-                cross_check=True,
-                max_ratio=0.8,
-                n_keypoints=500,
-                title1=reference_name,
-                title2=path.name,
-                ransac_threshold=None,
-            )
 
             compared += 1
             count = len(matches)
@@ -108,11 +107,12 @@ class FolderMatchingTool(ForensicsTool):
             ),
             details={
                 "Operation": "Folder matching",
-                "Method": "ORB",
+                "Method": "SIFT",
+                "Max image dimension (px)": 1000,
                 "Best image": best_path.name,
                 "Matches found": best_count,
                 "Images compared": compared,
-                "Unreadable images": skipped,
+                "Skipped images": skipped,
                 "Folder": folder,
             },
         )

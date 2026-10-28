@@ -73,6 +73,25 @@ class FeatureMatchingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             match_features_between(self.image1, self.image2, method="UNKNOWN")
 
+    def test_large_images_are_resized_without_changing_the_input(self):
+        image = self.image1.resize((1200, 800))
+        kp1, _, _, _ = match_features_between(image, self.image2, method="SIFT")
+
+        self.assertGreater(len(kp1), 0)
+        self.assertLess(kp1[:, 0].max(), 667)
+        self.assertLess(kp1[:, 1].max(), 1000)
+        self.assertEqual(image.size, (1200, 800))
+
+    def test_sift_without_features_returns_no_matches(self):
+        blank = Image.new("RGB", (100, 100))
+        for first, second in ((blank, self.image2), (self.image1, blank)):
+            with self.subTest(first_is_blank=first is blank):
+                _, _, matches, visual = match_features_between(
+                    first, second, method="SIFT"
+                )
+                self.assertEqual(len(matches), 0)
+                self.assertIsInstance(visual, Image.Image)
+
     def test_tool_run_orb(self):
         tool = self.tool()
         cfg = {
@@ -86,7 +105,10 @@ class FeatureMatchingTests(unittest.TestCase):
             "n_scales": 3,
             "sigma_min": 1.6,
         }
-        with patch("forensics_app.tools.feature_matching.FeatureMatchingDialog") as mock_dialog:
+        with (
+            patch("forensics_app.tools.feature_matching.FeatureMatchingDialog") as mock_dialog,
+            patch("forensics_app.tools.feature_matching.simpledialog.askfloat", return_value=None),
+        ):
             mock_dialog.return_value.result = cfg
             result = tool.run(None, self.document)
 
@@ -110,7 +132,10 @@ class FeatureMatchingTests(unittest.TestCase):
             "n_scales": 2,
             "sigma_min": 1.4,
         }
-        with patch("forensics_app.tools.feature_matching.FeatureMatchingDialog") as mock_dialog:
+        with (
+            patch("forensics_app.tools.feature_matching.FeatureMatchingDialog") as mock_dialog,
+            patch("forensics_app.tools.feature_matching.simpledialog.askfloat", return_value=None),
+        ):
             mock_dialog.return_value.result = cfg
             result = tool.run(None, self.document)
 

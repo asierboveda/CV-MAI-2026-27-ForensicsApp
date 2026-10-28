@@ -1,7 +1,7 @@
 """HOG extraction and visualization."""
 
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import messagebox, simpledialog
 from skimage.feature import hog
 from skimage.exposure import rescale_intensity
 import numpy as np
@@ -59,6 +59,17 @@ class HOGTool(ForensicsTool):
         for i in [orientations,block_w, block_h, pix_cel_w, pix_cel_h]:
             if i is None:
                 return None
+        required_height = block_h * pix_cel_h
+        required_width = block_w * pix_cel_w
+        if image.height < required_height or image.width < required_width:
+            messagebox.showerror(
+                "Invalid HOG parameters",
+                f"These settings require an image of at least "
+                f"{required_width} x {required_height} pixels. "
+                "Choose smaller cells or blocks.",
+                parent=parent,
+            )
+            return None
         image_rgb = np.asarray(image.convert("RGB"))
         feature, hog_image = hog(image_rgb, orientations = orientations, pixels_per_cell =(pix_cel_h,pix_cel_w), cells_per_block=(block_h,block_w), visualize = True, channel_axis = 2)
 

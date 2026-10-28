@@ -12,7 +12,7 @@ class BlurTool(ForensicsTool):
     category = "Filtering"
     description = "Applies a Gaussian blur filter to the image."
 
-    def run(self, parent: tk.Misc, image_document: ImageDocument) -> ToolResult:
+    def run(self, parent: tk.Misc, image_document: ImageDocument) -> ToolResult | None:
         radius = simpledialog.askfloat(
             "Gaussian Blur", 
             "Enter blur radius:", 
@@ -23,7 +23,12 @@ class BlurTool(ForensicsTool):
         if radius is None:
             return None
 
-        output = image_document.current.filter(ImageFilter.GaussianBlur(radius))
+        image = image_document.current
+        if image.mode == "1":
+            image = image.convert("L")
+        elif image.mode == "P":
+            image = image.convert("RGBA" if "transparency" in image.info else "RGB")
+        output = image.filter(ImageFilter.GaussianBlur(radius))
 
         return ToolResult(
             image=output,
