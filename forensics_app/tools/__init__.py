@@ -15,13 +15,18 @@ from .morphology import MorphologyTool
 from .canny import CannyTool
 from .edge_overlay import EdgeOverlayTool
 from .sharpen import SharpenTool
-from .normalized_cross_corr import Norm_cross_corr      
+from .normalized_cross_corr import Norm_cross_corr
 from .hog import HOGTool
 from .person_detection import PersonDetectionTool
 from .corner_detection import CornerDetectionTool
 from .descriptor_extractor import DescriptorExtractorTool
 from .feature_matching import FeatureMatchingTool
 from .folder_match import FolderMatchingTool
+from .bow_visual_words import VisualWordsTool
+from .bow_histogram import BoWHistogramTool
+from .bow_classify import BoWClassifyTool
+from .bow_retrieval import BoWRetrievalTool
+
 
 def build_tool_registry() -> ToolRegistry:
     return ToolRegistry(
@@ -47,6 +52,11 @@ def build_tool_registry() -> ToolRegistry:
             DescriptorExtractorTool(),
             FeatureMatchingTool(),
             FolderMatchingTool(),
+            # Set 7 — Bag of Visual Words
+            VisualWordsTool(),
+            BoWHistogramTool(),
+            BoWClassifyTool(),
+            BoWRetrievalTool(),
         ]
     )
 
