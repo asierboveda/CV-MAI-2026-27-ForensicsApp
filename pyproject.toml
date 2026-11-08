@@ -13,6 +13,7 @@ dependencies = [
     "scipy",
     "scikit-image",
     "matplotlib",
+    "scikit-learn",
 ]
 
 [tool.setuptools.packages.find]

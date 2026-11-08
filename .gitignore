@@ -9,6 +9,5 @@ build/
 dist/
 *.egg-info/
 outputs/
-models/
 datasets/
 forensics_app/images/set2-images/
