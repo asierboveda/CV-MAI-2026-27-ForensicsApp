@@ -22,6 +22,10 @@ from .corner_detection import CornerDetectionTool
 from .descriptor_extractor import DescriptorExtractorTool
 from .feature_matching import FeatureMatchingTool
 from .folder_match import FolderMatchingTool
+from .haar import HaarTool
+from .yunet import YuNetTool
+from .eigenfaces import EigenfacesTool
+from .face_recognition import FaceRecognitionTool
 from .bow_visual_words import VisualWordsTool
 from .bow_histogram import BoWHistogramTool
 from .bow_classify import BoWClassifyTool
@@ -52,6 +56,11 @@ def build_tool_registry() -> ToolRegistry:
             DescriptorExtractorTool(),
             FeatureMatchingTool(),
             FolderMatchingTool(),
+            # Set 6
+            HaarTool(),
+            YuNetTool(),
+            EigenfacesTool(),
+            FaceRecognitionTool(),
             # Set 7 — Bag of Visual Words
             VisualWordsTool(),
             BoWHistogramTool(),

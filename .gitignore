@@ -11,3 +11,6 @@ dist/
 outputs/
 datasets/
 forensics_app/images/set2-images/
+/face_detection_and_recognition.ipynb
+
+/forensics_app/images/set6/
