@@ -14,7 +14,11 @@ dependencies = [
     "scikit-image",
     "matplotlib",
     "scikit-learn",
+    "opencv-python>=4.8,<5",
 ]
+
+[tool.setuptools.package-data]
+forensics_app = ["models/*.onnx"]
 
 [tool.setuptools.packages.find]
 include = ["forensics_app*"]
