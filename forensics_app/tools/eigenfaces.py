@@ -31,6 +31,7 @@ def load_faces(data_folder: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def save_model(pca, train_coefficients, test_coefficients, y_train, y_test, target_names, train_indices, test_indices, image_shape, path):
     np.savez(
         path,
+        whiten=False,
         mean=pca.mean_,
         eigenfaces=pca.components_,
         train_coefficients=train_coefficients,
@@ -99,6 +100,11 @@ class EigenfacesTool(ForensicsTool):
         X_test_pca = pca.transform(X_test)
         save_model(pca, X_train_pca, X_test_pca, y_train, y_test, target_names,
                    train_indices, test_indices, (h, w), data_folder / "eigenfaces_model.npz")
+
+        for index in test_indices:
+            folder = data_folder / "test" / str(target_names[y[index]])
+            folder.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(np.rint(np.clip(images[index], 0, 1) * 255).astype(np.uint8)).save(folder / f"{index}.png")
 
         columns = min(4, k)
         rows = (k + columns - 1) // columns

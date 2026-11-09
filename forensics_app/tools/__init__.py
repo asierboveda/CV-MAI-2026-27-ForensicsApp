@@ -25,6 +25,7 @@ from .folder_match import FolderMatchingTool
 from .haar import HaarTool
 from .yunet import YuNetTool
 from .eigenfaces import EigenfacesTool
+from .face_recognition import FaceRecognitionTool
 from .bow_visual_words import VisualWordsTool
 from .bow_histogram import BoWHistogramTool
 from .bow_classify import BoWClassifyTool
@@ -59,6 +60,7 @@ def build_tool_registry() -> ToolRegistry:
             HaarTool(),
             YuNetTool(),
             EigenfacesTool(),
+            FaceRecognitionTool(),
             # Set 7 — Bag of Visual Words
             VisualWordsTool(),
             BoWHistogramTool(),
