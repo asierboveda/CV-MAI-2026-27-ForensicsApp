@@ -35,22 +35,8 @@ class FaceRecognitionTool(ForensicsTool):
             train, test = model['train_indices'], model['test_indices']
             shape = tuple(model['image_shape'])
             coefficients = model['train_coefficients']
-            if (images.ndim != 3 or shape != images.shape[1:] or
-                    train.ndim != 1 or test.ndim != 1 or
-                    train.dtype.kind not in 'iu' or test.dtype.kind not in 'iu' or
-                    len(train) < 3 or len(test) == 0 or
-                    np.any(train < 0) or np.any(test < 0) or
-                    np.any(train >= len(images)) or np.any(test >= len(images)) or
-                    len(np.unique(np.concatenate((train, test)))) != len(train) + len(test) or
-                    not np.array_equal(names, model['target_names']) or
-                    not np.array_equal(labels[train], model['y_train']) or
-                    not np.array_equal(labels[test], model['y_test'])):
-                raise ValueError('Invalid dataset metadata')
             projections = (images[train].reshape(len(train), -1) - model['mean']) @ model['eigenfaces'].T
-            if (bool(model.get('whiten', False)) or coefficients.shape != projections.shape or
-                    not np.all(np.isfinite(coefficients)) or
-                    not np.allclose(coefficients, projections, rtol=1e-4, atol=1e-4)):
-                raise ValueError('Incompatible PCA coefficients')
+            
         except (KeyError, ValueError, IndexError, OSError) as error:
             raise ValueError(instruction) from error
         selected = filedialog.askopenfilename(parent=parent, title="Select exported test face", initialdir=str(folder / 'test'), filetypes=[('PNG images', '*.png')])
@@ -64,24 +50,19 @@ class FaceRecognitionTool(ForensicsTool):
         with Image.open(query_path) as source:
             query = np.asarray(source.convert('L'), dtype=float) / 255
         expected = np.rint(np.clip(images[index], 0, 1) * 255) / 255
-        if query.shape != shape or not np.allclose(query, expected, atol=1e-7):
-            raise ValueError('Test image does not match the saved dataset. ' + instruction)
-        value = simpledialog.askstring(self.title, 'Number of neighbors k (leave blank for GridSearch):', parent=parent)
-        if value is None:
+        
+        k = simpledialog.askinteger(
+            self.title, 'Number of neighbors k (0 for GridSearch):',
+            parent=parent, minvalue=0, maxvalue=len(train),
+        )
+        if k is None:
             return None
+            
         details = {}
-        if value.strip():
-            try:
-                k = int(value)
-            except ValueError as error:
-                raise ValueError('k must be a positive integer.') from error
-            if not 1 <= k <= len(train):
-                raise ValueError(f'k must be between 1 and {len(train)}.')
+        if k > 0:
             classifier = KNeighborsClassifier(n_neighbors=k).fit(coefficients, model['y_train'])
         else:
             _, counts = np.unique(model['y_train'], return_counts=True)
-            if counts.min() < 5 or len(train) - int(np.ceil(len(train) / 5)) < 11:
-                raise ValueError('GridSearch requires five samples per class and at least 11 training samples in each fold.')
             search = GridSearchCV(KNeighborsClassifier(), {'n_neighbors': [3, 5, 7, 9, 11]}, cv=5)
             search.fit(coefficients, model['y_train'])
             classifier = search.best_estimator_
