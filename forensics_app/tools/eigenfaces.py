@@ -31,7 +31,7 @@ def load_faces(data_folder: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def save_model(pca, train_coefficients, test_coefficients, y_train, y_test, target_names, train_indices, test_indices, image_shape, path):
     np.savez(
         path,
-        whiten=False,
+        whiten=pca.whiten,
         mean=pca.mean_,
         eigenfaces=pca.components_,
         train_coefficients=train_coefficients,
@@ -94,7 +94,7 @@ class EigenfacesTool(ForensicsTool):
         if k is None:
             return None
 
-        pca = PCA(n_components=n_components, svd_solver="randomized", whiten=False, random_state=42).fit(X_train)
+        pca = PCA(n_components=n_components, svd_solver="randomized", whiten=True, random_state=42).fit(X_train)
         eigenfaces = pca.components_.reshape((n_components, h, w))
         X_train_pca = pca.transform(X_train)
         X_test_pca = pca.transform(X_test)
@@ -120,5 +120,5 @@ class EigenfacesTool(ForensicsTool):
             details={"Components": n_components, "Eigenfaces shown": k,
                      "Training images": X_train_pca.shape[0], "Test images": X_test_pca.shape[0],
                      "People": len(target_names), "Model": str(data_folder / "eigenfaces_model.npz"),
-                     "Projection": "w = U.T @ (x - mean)", "Explained variance": f"{pca.explained_variance_ratio_.sum():.1%}"},
+                     "Projection": "w = (U.T @ (x - mean)) / sqrt(explained_variance)", "Explained variance": f"{pca.explained_variance_ratio_.sum():.1%}"},
         )

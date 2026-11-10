@@ -68,6 +68,10 @@ class FaceRecognitionTool(ForensicsTool):
             classifier = search.best_estimator_
             details['Best CV accuracy'] = f'{search.best_score_:.2%}'
         weights = (query.ravel() - model['mean']) @ model['eigenfaces'].T
+        if model.get('whiten', False):
+            # Match PCA.transform, including its guard for near-zero variance.
+            scale = np.sqrt(model['explained_variance'])
+            weights /= np.maximum(scale, np.finfo(scale.dtype).eps)
         prediction = int(classifier.predict(weights[None])[0])
         distances = np.linalg.norm(coefficients - weights, axis=1)
         nearest = np.argsort(distances, kind='stable')[:3]
