@@ -38,7 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from PIL import Image
-from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.svm import SVC
 
@@ -118,10 +118,17 @@ print(f"  {len(train_records)} train images, {n_total_descs:,} SIFT descriptors 
 #           KMeans uses Euclidean distance internally to assign each descriptor
 #           to its nearest cluster centroid (visual word).
 # ===========================================================================
-print(f"\nSTEP 3: Fitting KMeans (K={K}) — this may take a moment …")
+print(f"\nSTEP 3: Fitting MiniBatchKMeans (K={K}) …")
 
 all_descs_stacked = np.vstack(all_desc_parts)   # shape (N_total_descs, 128)
-kmeans = KMeans(n_clusters=K, random_state=SEED, n_init="auto", verbose=0)
+batch_size = min(1024, max(256, len(all_descs_stacked) // 5))
+kmeans = MiniBatchKMeans(
+    n_clusters=K,
+    batch_size=batch_size,
+    random_state=SEED,
+    n_init="auto",
+    verbose=0,
+)
 kmeans.fit(all_descs_stacked)
 print(f"  Codebook fitted: {K} visual words from {len(all_descs_stacked):,} descriptors")
 

@@ -21,7 +21,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageDraw
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.metrics.pairwise import chi2_kernel
 from sklearn.svm import SVC
 
@@ -103,8 +103,8 @@ def _load(name: str) -> Any:
 # Public loaders
 # ---------------------------------------------------------------------------
 
-def load_kmeans() -> KMeans:
-    """Return the fitted KMeans codebook."""
+def load_kmeans() -> KMeans | MiniBatchKMeans:
+    """Return the fitted KMeans or MiniBatchKMeans codebook."""
     return _load("kmeans_model.pkl")
 
 
@@ -793,9 +793,16 @@ def build_codebook_bundle(
             "Please choose a smaller K or use higher contrast images."
         )
 
-    # 3. Fit KMeans codebook
-    _notify(0.50, f"Fitting KMeans (K={k}) on {len(all_descs_stacked):,} descriptors...")
-    kmeans = KMeans(n_clusters=k, random_state=seed, n_init="auto", verbose=0)
+    # 3. Fit MiniBatchKMeans codebook
+    batch_size = min(1024, max(256, len(all_descs_stacked) // 5))
+    _notify(0.50, f"Fitting MiniBatchKMeans (K={k}, batch_size={batch_size}) on {len(all_descs_stacked):,} descriptors...")
+    kmeans = MiniBatchKMeans(
+        n_clusters=k,
+        batch_size=batch_size,
+        random_state=seed,
+        n_init="auto",
+        verbose=0,
+    )
     kmeans.fit(all_descs_stacked)
 
     # 4. Extract representative patches
@@ -905,6 +912,7 @@ def build_codebook_bundle(
         "dataset_dir": str(ds_path),
         "output_dir": str(out_path),
         "k": k,
+        "clustering_algorithm": "MiniBatchKMeans",
         "classes": class_names,
         "num_classes": len(class_names),
         "num_train_images": num_train,

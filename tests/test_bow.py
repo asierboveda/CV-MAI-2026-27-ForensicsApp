@@ -75,6 +75,16 @@ class BoWTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 build_codebook_bundle(DATASET_DIR, Path("dummy"), k=9999)
 
+    def test_minibatch_kmeans_compatibility(self):
+        from sklearn.cluster import MiniBatchKMeans
+        # Test that MiniBatchKMeans works seamlessly with build_bow_histogram
+        np.random.seed(42)
+        dummy_descs = np.random.randn(100, 128).astype(np.float64)
+        mb_kmeans = MiniBatchKMeans(n_clusters=5, batch_size=32, random_state=42).fit(dummy_descs)
+        hist = build_bow_histogram(self.image, mb_kmeans)
+        self.assertEqual(len(hist), 5)
+        self.assertAlmostEqual(hist.sum(), 1.0, places=4)
+
     def test_render_histogram(self):
         hist = np.ones(30, dtype=np.float64) / 30.0
         chart = render_histogram(hist, title="Test Chart", annotation="p(test) = 0.99")

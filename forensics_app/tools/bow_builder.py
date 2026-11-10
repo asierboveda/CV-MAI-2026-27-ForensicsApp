@@ -319,7 +319,7 @@ class CodebookBuilderWindow(tk.Toplevel):
         self.btn_construct.configure(state="disabled")
         self.prog_bar["value"] = 0
         self.txt_log.delete("1.0", "end")
-        self._log(f"Starting codebook construction for K={k_val}...")
+        self._log(f"Starting codebook construction for K={k_val} using MiniBatchKMeans...")
         self._log(f"Dataset: {ds_path} ({self.total_images} images across {len(self.detected_classes)} classes)")
         self._log(f"Target folder: {output_dir}")
 
