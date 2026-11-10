@@ -19,8 +19,10 @@ from .base import ForensicsTool, ToolResult
 from .bow_utils import (
     TEST_DIR,
     build_bow_histogram,
+    get_active_model_dir,
     load_kmeans,
     load_visual_words,
+    prompt_codebook_selection,
     render_single_image_histogram_with_top_words,
 )
 
@@ -64,6 +66,12 @@ class BoWHistogramWindow(tk.Toplevel):
 
         btn_box = ttk.Frame(toolbar)
         btn_box.pack(side="right")
+
+        ttk.Button(
+            btn_box,
+            text="Change Codebook…",
+            command=self._on_change_codebook,
+        ).pack(side="left", padx=(0, 8))
 
         ttk.Button(
             btn_box,
@@ -123,6 +131,21 @@ class BoWHistogramWindow(tk.Toplevel):
             kmeans=self.kmeans,
             visual_words_records=self.visual_words_records,
         )
+
+    def _on_change_codebook(self) -> None:
+        chosen = prompt_codebook_selection(self, force_prompt=True)
+        if chosen:
+            try:
+                self.kmeans = load_kmeans()
+                self.visual_words_records = load_visual_words()
+                self._refresh()
+                messagebox.showinfo(
+                    "Codebook Switched",
+                    f"Switched to codebook '{chosen.name}'.",
+                    parent=self,
+                )
+            except Exception as exc:
+                messagebox.showerror("Error Loading Codebook", str(exc), parent=self)
 
     def _on_choose_image(self) -> None:
         initialdir = str(TEST_DIR) if TEST_DIR.exists() else None
@@ -289,6 +312,11 @@ class BoWHistogramTool(ForensicsTool):
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         assert document.current is not None
+
+        # Offer user choice of default or custom codebook
+        chosen_dir = prompt_codebook_selection(parent)
+        if chosen_dir is None:
+            return None
 
         try:
             kmeans = load_kmeans()

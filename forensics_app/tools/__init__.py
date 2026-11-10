@@ -22,7 +22,7 @@ from .corner_detection import CornerDetectionTool
 from .descriptor_extractor import DescriptorExtractorTool
 from .feature_matching import FeatureMatchingTool
 from .folder_match import FolderMatchingTool
-from .bow_visual_words import VisualWordsTool
+from .bow_builder import CodebookBuilderTool
 from .bow_histogram import BoWHistogramTool
 from .bow_classify import BoWClassifyTool
 from .bow_retrieval import BoWRetrievalTool
@@ -53,7 +53,7 @@ def build_tool_registry() -> ToolRegistry:
             FeatureMatchingTool(),
             FolderMatchingTool(),
             # Set 7 — Bag of Visual Words
-            VisualWordsTool(),
+            CodebookBuilderTool(),
             BoWHistogramTool(),
             BoWClassifyTool(),
             BoWRetrievalTool(),

@@ -8,9 +8,11 @@ from forensics_app.core import ImageDocument
 from forensics_app.tools import build_tool_registry
 from forensics_app.tools.bow_localize import VisualWordLocalizationWindow
 from forensics_app.tools.bow_utils import (
+    MODELS_DIR,
     build_bow_histogram,
     compute_histogram_similarities,
     extract_keypoints_and_assignments,
+    get_active_model_dir,
     load_classes,
     load_classifier,
     load_kmeans,
@@ -23,6 +25,8 @@ from forensics_app.tools.bow_utils import (
     render_localization_view,
     render_retrieval_composite,
     render_single_image_histogram_with_top_words,
+    set_active_model_dir,
+    validate_model_dir,
 )
 
 
@@ -36,15 +40,40 @@ class BoWTests(unittest.TestCase):
 
     def test_bow_tools_registered(self):
         tools = {t.tool_id: t for t in build_tool_registry().all()}
-        self.assertIn("bow_visual_words", tools)
+        self.assertIn("bow_build", tools)
         self.assertIn("bow_histogram", tools)
         self.assertIn("bow_classify", tools)
         self.assertIn("bow_retrieval", tools)
+        self.assertNotIn("bow_visual_words", tools, "Visualise Codebook is integrated inside Construct Codebook")
         self.assertNotIn("bow_localize", tools, "Spatial localization is accessible via BoW Histogram")
-        self.assertEqual(tools["bow_visual_words"].category, "Set 7")
+        self.assertEqual(tools["bow_build"].category, "Set 7")
         self.assertEqual(tools["bow_histogram"].category, "Set 7")
         self.assertEqual(tools["bow_classify"].category, "Set 7")
         self.assertEqual(tools["bow_retrieval"].category, "Set 7")
+
+    def test_codebook_directory_validation_and_switching(self):
+        valid, msg = validate_model_dir(MODELS_DIR)
+        self.assertTrue(valid)
+
+        # Non-existent directory
+        fake_dir = Path("non_existent_folder_xyz")
+        valid_fake, _ = validate_model_dir(fake_dir)
+        self.assertFalse(valid_fake)
+
+        # Set and get active model dir
+        orig = get_active_model_dir()
+        set_active_model_dir(MODELS_DIR)
+        self.assertEqual(get_active_model_dir(), MODELS_DIR.resolve())
+
+    def test_codebook_k_range_validation(self):
+        from forensics_app.tools.bow_utils import DATASET_DIR, build_codebook_bundle
+        if DATASET_DIR.is_dir():
+            # K must be > 1
+            with self.assertRaises(ValueError):
+                build_codebook_bundle(DATASET_DIR, Path("dummy"), k=1)
+            # K must be < total images
+            with self.assertRaises(ValueError):
+                build_codebook_bundle(DATASET_DIR, Path("dummy"), k=9999)
 
     def test_render_histogram(self):
         hist = np.ones(30, dtype=np.float64) / 30.0
@@ -135,11 +164,10 @@ class BoWTests(unittest.TestCase):
         try:
             tools = {t.tool_id: t for t in build_tool_registry().all()}
 
-            # Visual words tool (Overview grid)
-            res_vw = tools["bow_visual_words"].run(root, ImageDocument())
-            self.assertIsNotNone(res_vw)
-            self.assertIsNotNone(res_vw.image)
-            self.assertIn("5 × 6", res_vw.message)
+            # Codebook builder tool
+            res_build = tools["bow_build"].run(root, ImageDocument())
+            self.assertIsNotNone(res_build)
+            self.assertIn("BoW Codebook Construction", res_build.details["Operation"])
 
             # Histogram tool on single image with top 5 words
             res_hist = tools["bow_histogram"].run(root, self.document)

@@ -24,10 +24,12 @@ from forensics_app.core import ImageDocument
 from .base import ForensicsTool, ToolResult
 from .bow_utils import (
     build_bow_histogram,
+    get_active_model_dir,
     load_classifier,
     load_classes,
     load_kmeans,
     load_train_histograms,
+    prompt_codebook_selection,
     render_classification_result,
 )
 
@@ -46,6 +48,11 @@ class BoWClassifyTool(ForensicsTool):
 
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         assert document.current is not None
+
+        # Offer user choice of default or custom codebook
+        chosen_dir = prompt_codebook_selection(parent)
+        if chosen_dir is None:
+            return None
 
         # Load all models (each cached after first call)
         try:
@@ -113,6 +120,7 @@ class BoWClassifyTool(ForensicsTool):
             message=annotation,
             details={
                 "Operation": "BoW Classification",
+                "Active Codebook": get_active_model_dir().name,
                 "Predicted class": top_label,
                 "Confidence": f"{top_prob:.4f}",
                 **prob_details,

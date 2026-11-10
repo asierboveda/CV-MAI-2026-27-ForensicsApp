@@ -19,11 +19,13 @@ from .base import ForensicsTool, ToolResult
 from .bow_utils import (
     build_bow_histogram,
     compute_histogram_similarities,
+    get_active_model_dir,
     load_classes,
     load_classifier,
     load_kmeans,
     load_train_histograms,
     load_train_image_records,
+    prompt_codebook_selection,
     render_retrieval_composite,
 )
 
@@ -76,6 +78,12 @@ class BoWRetrievalWindow(tk.Toplevel):
             text="Content-Based Image Retrieval (CBIR) - Visual Search",
             font=("TkDefaultFont", 12, "bold"),
         ).pack(side="left")
+
+        ttk.Button(
+            toolbar,
+            text="Change Codebook…",
+            command=self._on_change_codebook,
+        ).pack(side="right", padx=(0, 8))
 
         ttk.Button(
             toolbar,
@@ -137,6 +145,24 @@ class BoWRetrievalWindow(tk.Toplevel):
             "<Configure>",
             lambda event: self.canvas.itemconfigure(self.window_id, width=event.width),
         )
+
+    def _on_change_codebook(self) -> None:
+        chosen = prompt_codebook_selection(self, force_prompt=True)
+        if chosen:
+            try:
+                self.kmeans = load_kmeans()
+                self.train_hists = load_train_histograms()
+                self.train_records = load_train_image_records()
+                self.classes = load_classes()
+                self.query_hist = build_bow_histogram(self.query_image, self.kmeans)
+                self._run_search()
+                messagebox.showinfo(
+                    "Codebook Switched",
+                    f"Switched CBIR to codebook '{chosen.name}'.",
+                    parent=self,
+                )
+            except Exception as exc:
+                messagebox.showerror("Error Loading Codebook", str(exc), parent=self)
 
     def _run_search(self) -> None:
         for widget in self.results_frame.winfo_children():
@@ -257,6 +283,11 @@ class BoWRetrievalTool(ForensicsTool):
     def run(self, parent: tk.Misc, document: ImageDocument) -> ToolResult | None:
         assert document.current is not None
 
+        # Offer user choice of default or custom codebook
+        chosen_dir = prompt_codebook_selection(parent)
+        if chosen_dir is None:
+            return None
+
         try:
             kmeans = load_kmeans()
             train_hists = load_train_histograms()
@@ -286,6 +317,7 @@ class BoWRetrievalTool(ForensicsTool):
         top_matches: list[dict] = []
         details: dict[str, str] = {
             "Operation": "Content-Based Image Retrieval (CBIR)",
+            "Active Codebook": get_active_model_dir().name,
             "Query image": name,
             "Metric": "Chi-squared similarity",
             "Database images searched": str(len(train_records)),
