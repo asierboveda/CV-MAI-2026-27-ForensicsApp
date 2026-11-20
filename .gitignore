@@ -1,17 +1,28 @@
+# Python / entorno
 .venv/
 __pycache__/
 *.py[cod]
-.DS_Store
-.idea/
-.vscode/
-.pytest_cache/
+*.egg-info/
 build/
 dist/
-*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Editores / SO
+.DS_Store
+__MACOSX/
+.idea/
+.vscode/
+
+# Material de clase, notebooks y resultados locales
+materials/
+notebooks/
 outputs/
 datasets/
-forensics_app/images/set2-images/
-forensics_app/images/set6
-/face_detection_and_recognition.ipynb
+*.zip
 
-/forensics_app/images/set6/
+# Imágenes y modelos locales de la app
+forensics_app/images/set6/
+forensics_app/models/codebook_*/
+# > 100 MB (GitHub limit): download from Drive "models/" into forensics_app/models/set8/
+forensics_app/models/set8/inceptionv3_finetuned_cifar10.keras

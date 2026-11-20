@@ -20,6 +20,7 @@ IMAGE_FOLDER = (
     Path(__file__).resolve().parents[1]
     / "images/Set5_images/buildings"
 )
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs"
 
 # Use validation cases to choose the configuration.
 # Keep both directions of each image pair in the same split.
@@ -243,10 +244,11 @@ def main():
 
     print(f"\nTest accuracy: {test_summary['accuracy']:.0%}")
 
-    save_csv(Path("matching_results.csv"), results)
-    save_csv(Path("matching_summary.csv"), summaries)
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    save_csv(OUTPUT_DIR / "matching_results.csv", results)
+    save_csv(OUTPUT_DIR / "matching_summary.csv", summaries)
 
-    print("Saved matching_results.csv and matching_summary.csv")
+    print(f"Saved matching_results.csv and matching_summary.csv to {OUTPUT_DIR}")
 
 
 if __name__ == "__main__":

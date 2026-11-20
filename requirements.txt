@@ -5,3 +5,6 @@ scikit-image
 matplotlib
 scikit-learn
 opencv-python>=4.8,<5
+tensorflow
+ultralytics
+umap-learn
