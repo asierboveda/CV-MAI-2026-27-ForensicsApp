@@ -33,6 +33,7 @@ from .bow_classify import BoWClassifyTool
 from .bow_retrieval import BoWRetrievalTool
 from .cnn import CNNClassifyTool, FeatureProjectionTool
 from .yolo import YOLODetectionTool
+from .clip import CLIPZeroShotTool, CLIPTextSearchTool
 
 
 def build_tool_registry() -> ToolRegistry:
@@ -74,6 +75,9 @@ def build_tool_registry() -> ToolRegistry:
             FeatureProjectionTool(),
             # Set 9 — YOLO detection
             YOLODetectionTool(),
+            # Set 10 — CLIP
+            CLIPZeroShotTool(),
+            CLIPTextSearchTool(),
         ]
     )
 

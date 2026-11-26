@@ -18,6 +18,7 @@ dependencies = [
     "tensorflow",
     "ultralytics",
     "umap-learn",
+    "transformers",
 ]
 
 [tool.setuptools.package-data]
